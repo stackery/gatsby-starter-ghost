@@ -61,10 +61,11 @@ module.exports = {
         `gatsby-transformer-sharp`,
         {
             resolve: `gatsby-source-ghost`,
-            options:
-                process.env.NODE_ENV === `development`
-                    ? ghostConfig.development
-                    : ghostConfig.production,
+            options: {
+                apiUrl: process.env.GHOST_API_URL,
+                contentApiKey: process.env.GHOST_CONTENT_API_KEY,
+                version: 'v3'
+            }
         },
         /**
          *  Utility Plugins
