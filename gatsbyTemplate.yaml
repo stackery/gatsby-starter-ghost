@@ -169,6 +169,15 @@ Resources:
                 Resource:
                   - !Sub ${gatsbyBucket.Arn}/*
                   - !Sub ${gatsbyBucket.Arn}
+  CdnSSLCertificate:
+    Type: Custom::StackeryUsEast1SSLCertificate
+    Properties:
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:stackery-agent-commander
+      DomainName: !Ref EnvConfigdomainsjamstackeryAsString
+      DomainValidationOptions:
+        - DomainName: !Ref EnvConfigdomainsjamstackeryAsString
+          ValidationDomain: !Ref EnvConfigdomainsjamstackeryvalidationAsString
+    Condition: CdnCustomDomain
   gatsbyCDN:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -195,6 +204,15 @@ Resources:
               OriginAccessIdentity: !Sub
                 - origin-access-identity/cloudfront/${OriginAccessIdentity}
                 - OriginAccessIdentity: !Ref gatsbyCDNOriginAccessIdentity
+        Aliases: !If
+          - CdnCustomDomain
+          - - !Ref EnvConfigdomainsjamstackeryAsString
+          - !Ref AWS::NoValue
+        ViewerCertificate: !If
+          - CdnCustomDomain
+          - AcmCertificateArn: !Ref CdnSSLCertificate
+            SslSupportMethod: sni-only
+          - !Ref AWS::NoValue
   gatsbyCDNOriginAccessIdentity:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
     Properties:
@@ -263,7 +281,20 @@ Parameters:
   EnvironmentTagName:
     Type: String
     Description: Environment Name (injected by Stackery at deployment time)
+  EnvConfigdomainsjamstackeryAsString:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /<EnvironmentName>/domains/jamstackery
+  EnvConfigdomainsjamstackeryvalidationAsString:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /<EnvironmentName>/domains/jamstackeryvalidation
 Metadata:
   EnvConfigParameters:
     EnvConfigghostApiUrlAsString: ghostApiUrl
     EnvConfigghostContentApiKeyAsString: ghostContentApiKey
+    EnvConfigdomainsjamstackeryAsString: domains.jamstackery
+    EnvConfigdomainsjamstackeryvalidationAsString: domains.jamstackeryvalidation
+Conditions:
+  CdnCustomDomain: !Not
+    - !Equals
+      - 'false'
+      - !Ref EnvConfigdomainsjamstackeryAsString
